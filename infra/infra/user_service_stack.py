@@ -14,7 +14,7 @@ class UserServiceStack(Stack):
         super().__init__(scope, construct_id, **kwargs)
 
         # 1. Create a VPC (Networking)
-        vpc = ec2.Vpc(self, "UserServiceVpc", max_azs=2)
+        vpc = ec2.Vpc(self, "DevVpc", max_azs=2)
 
         # 2. Create an ECR Repository (Docker Image Storage)
         repository = ecr.Repository(self, "UserServiceRepo",
@@ -23,7 +23,7 @@ class UserServiceStack(Stack):
         )
 
         # 3. Create an ECS Cluster
-        cluster = ecs.Cluster(self, "UserServiceCluster", vpc=vpc)
+        cluster = ecs.Cluster(self, "DevCluster", vpc=vpc)
 
         # 4. Define the Fargate Task & Service with a Load Balancer
         # This high-level pattern creates the Task Definition, Service, and ALB.
