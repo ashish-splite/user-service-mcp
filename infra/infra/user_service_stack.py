@@ -1,9 +1,11 @@
 from aws_cdk import (
+    Duration,
     Stack,
     aws_ec2 as ec2,
     aws_ecs as ecs,
     aws_ecr as ecr,
     aws_ecs_patterns as ecs_patterns,
+    aws_elasticloadbalancingv2 as elbv2,
     CfnOutput
 )
 from constructs import Construct
@@ -50,12 +52,14 @@ class UserServiceStack(Stack):
         )
 
         # Health check configuration
-        # Use TCP health check for SSE server (more reliable than HTTP for streaming endpoints)
-        # Simply checks if port 8000 is accepting connections
+        # Use HTTP health check for ALB (ALB doesn't support TCP)
+        # Checks root path - FastMCP SSE server responds to basic HTTP requests
         fargate_service.target_group.configure_health_check(
-            protocol=ecs.Protocol.TCP,
-            interval=30,
-            timeout=5,
+            protocol=elbv2.Protocol.HTTP,
+            path="/",
+            healthy_http_codes="200,404",  # Accept 200 (healthy) or 404 (not found but server is up)
+            interval=Duration.seconds(30),
+            timeout=Duration.seconds(5),
             healthy_threshold_count=2,
             unhealthy_threshold_count=3
         )
