@@ -1,63 +1,43 @@
 version: 0.2
 
-# Infrastructure Deployment Buildspec (CDK Only)
-# Runs: cdk deploy to create/update AWS resources (VPC, ECS, ECR, etc.)
-# Frequency: On-demand or only when infrastructure changes
-# Triggered by: Manual trigger or infrastructure code changes
-# 
-# IMPORTANT: Docker image must be built and pushed to ECR BEFORE this build runs.
-# Use buildspec.yml to build and push the Docker image to ECR first.
-# Or manually: docker build -t <ECR_URI>:latest . && docker push <ECR_URI>:latest
-
 phases:
   install:
     runtime-versions:
       python: 3.11
-      nodejs: 20  # Required to install the CDK CLI
+      nodejs: 20
     commands:
-      - echo "Installing AWS CDK CLI and Python dependencies..."
       - npm install -g aws-cdk
       - pip install -r infra/requirements.txt
-      - echo "Dependencies installed successfully"
 
   pre_build:
     commands:
-      - echo "Logging in to ECR..."
       - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      # Fallback for Region if AWS_DEFAULT_REGION is empty
+      - REGION=${AWS_DEFAULT_REGION:-$AWS_REGION}
+      - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/user-service-mcp
       
-      - echo "Ensuring ECR repository exists..."
+      - aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
+      
       - aws ecr describe-repositories --repository-names user-service-mcp || aws ecr create-repository --repository-name user-service-mcp
       
-      - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/user-service-mcp
-      
-      - echo "Seeding dummy image if ECR is empty..."
       - |
         if ! aws ecr describe-images --repository-name user-service-mcp --image-ids imageTag=latest > /dev/null 2>&1; then
-          echo "No image found. Pushing dummy 'hello-world' to prevent ECS failure..."
-          docker pull public.ecr.aws/docker/library/hello-world:latest
-          docker tag public.ecr.aws/docker/library/hello-world:latest $REPOSITORY_URI:latest
+          echo "Seeding ECR with nginx to keep ECS service alive..."
+          docker pull public.ecr.aws/nginx/nginx:latest
+          docker tag public.ecr.aws/nginx/nginx:latest $REPOSITORY_URI:latest
           docker push $REPOSITORY_URI:latest
         fi
-      - cd infra && cdk synth
 
   build:
     commands:
-      - echo "Deploying infrastructure with CDK..."
-      - cd infra && cdk deploy --require-approval never --outputs-file outputs.json
-      - echo "Infrastructure deployment completed"
+      - cd infra
+      - cdk synth
+      - cdk deploy --require-approval never --outputs-file outputs.json
 
   post_build:
     commands:
-      - echo "Extracting stack outputs..."
-      - cat infra/outputs.json
+      - cp infra/outputs.json .
 
 artifacts:
   files:
-    - 'infra/outputs.json'
-  name: InfraOutputs
-
-cache:
-  paths:
-    - '/root/.cache/pip/**/*'
+    - 'outputs.json'
