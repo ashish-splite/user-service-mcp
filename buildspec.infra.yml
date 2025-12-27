@@ -45,14 +45,13 @@ phases:
   build:
     commands:
       - echo "Deploying infrastructure with CDK..."
-      - cd infra && cdk deploy --require-approval never
+      - cd infra && cdk deploy --require-approval never --outputs-file outputs.json
       - echo "Infrastructure deployment completed"
 
   post_build:
     commands:
       - echo "Extracting stack outputs..."
-      - cd infra && cdk deploy --require-approval never --outputs-file outputs.json
-      - cat outputs.json
+      - cat infra/outputs.json
 
 artifacts:
   files:
