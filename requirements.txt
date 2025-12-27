@@ -1,0 +1,5 @@
+fastmcp[sse]
+sqlalchemy
+psycopg2-binary
+python-dotenv
+rapidfuzz
