@@ -11,27 +11,27 @@ phases:
 
   pre_build:
     commands:
-      - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-      # Fallback for Region if AWS_DEFAULT_REGION is empty
-      - REGION=${AWS_DEFAULT_REGION:-$AWS_REGION}
-      - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/user-service-mcp
+      # - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      # # Fallback for Region if AWS_DEFAULT_REGION is empty
+      # - REGION=${AWS_DEFAULT_REGION:-$AWS_REGION}
+      # - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/user-service-mcp
       
-      - aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
+      # - aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
       
-      - aws ecr describe-repositories --repository-names user-service-mcp || aws ecr create-repository --repository-name user-service-mcp
+      # - aws ecr describe-repositories --repository-names user-service-mcp || aws ecr create-repository --repository-name user-service-mcp
       
-      - |
-        if ! aws ecr describe-images --repository-name user-service-mcp --image-ids imageTag=latest > /dev/null 2>&1; then
-          echo "Seeding ECR with nginx to keep ECS service alive..."
-          docker pull public.ecr.aws/nginx/nginx:latest
-          docker tag public.ecr.aws/nginx/nginx:latest $REPOSITORY_URI:latest
-          docker push $REPOSITORY_URI:latest
-        fi
+      # - |
+      #   if ! aws ecr describe-images --repository-name user-service-mcp --image-ids imageTag=latest > /dev/null 2>&1; then
+      #     echo "Seeding ECR with nginx to keep ECS service alive..."
+      #     docker pull public.ecr.aws/nginx/nginx:latest
+      #     docker tag public.ecr.aws/nginx/nginx:latest $REPOSITORY_URI:latest
+      #     docker push $REPOSITORY_URI:latest
+      #   fi
 
   build:
     commands:
       - cd infra
-      - cdk synth
+      # - cdk synth
       - cdk deploy --require-approval never --outputs-file outputs.json
 
   post_build:
