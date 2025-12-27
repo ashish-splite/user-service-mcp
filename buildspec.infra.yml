@@ -1,0 +1,58 @@
+version: 0.2
+
+# Infrastructure Deployment Buildspec (CDK Only)
+# Runs: cdk deploy to create/update AWS resources (VPC, ECS, ECR, etc.)
+# Frequency: On-demand or only when infrastructure changes
+# Triggered by: Manual trigger or infrastructure code changes
+# 
+# IMPORTANT: Docker image must be built and pushed to ECR BEFORE this build runs.
+# Use buildspec.yml to build and push the Docker image to ECR first.
+# Or manually: docker build -t <ECR_URI>:latest . && docker push <ECR_URI>:latest
+
+phases:
+  install:
+    commands:
+      - echo "Installing Python dependencies and AWS CDK..."
+      - cd infra && pip install -r requirements.txt
+      - echo "Dependencies installed successfully"
+
+  pre_build:
+    commands:
+      - echo "Logging in to ECR..."
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      
+      - echo "Ensuring ECR repository exists..."
+      - aws ecr describe-repositories --repository-names user-service-mcp || aws ecr create-repository --repository-name user-service-mcp
+      
+      - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/user-service-mcp
+      
+      - echo "Seeding dummy image if ECR is empty..."
+      - |
+        if ! aws ecr describe-images --repository-name user-service-mcp --image-ids imageTag=latest > /dev/null 2>&1; then
+          echo "No image found. Pushing dummy 'hello-world' to prevent ECS failure..."
+          docker pull public.ecr.aws/docker/library/hello-world:latest
+          docker tag public.ecr.aws/docker/library/hello-world:latest $REPOSITORY_URI:latest
+          docker push $REPOSITORY_URI:latest
+        fi
+      - cd infra && cdk synth
+
+  build:
+    commands:
+      - echo "Deploying infrastructure with CDK..."
+      - cd infra && cdk deploy --require-approval never
+      - echo "Infrastructure deployment completed"
+
+  post_build:
+    commands:
+      - echo "Extracting stack outputs..."
+      - cd infra && cdk deploy --require-approval never --outputs-file outputs.json
+      - cat outputs.json
+
+artifacts:
+  files:
+    - 'infra/outputs.json'
+  name: InfraOutputs
+
+cache:
+  paths:
+    - '/root/.cache/pip/**/*'

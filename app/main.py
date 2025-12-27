@@ -113,4 +113,4 @@ def list_users_by_age(age: int) -> list:
 
 if __name__ == "__main__":
     # Run as SSE (Server-Sent Events) for network access
-    mcp.run(transport="sse", host="0.0.0.0", port=8001)
+    mcp.run(transport="sse", host="0.0.0.0", port=8000)

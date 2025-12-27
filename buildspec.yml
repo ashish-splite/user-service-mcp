@@ -1,18 +1,43 @@
 version: 0.2
+
+# Application Deployment Buildspec
+# Runs: Build Docker image, push to ECR, update ECS service
+# Frequency: On every application code change
+# Triggered by: CodePipeline on git push to main/develop branch
+
 phases:
   pre_build:
     commands:
-      - echo Logging in to Amazon ECR...
+      - echo "=== Application Build & Deploy Started ==="
+      - echo "Logging in to Amazon ECR..."
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
-      - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME
+      - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/user-service-mcp
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH:=latest}
+      - echo "Building Docker image with tag $IMAGE_TAG"
+
   build:
     commands:
-      - echo Build started on `date`
-      - docker build -t $REPOSITORY_URI:latest .
+      - echo "Building Docker image..."
+      - docker build -t $REPOSITORY_URI:$IMAGE_TAG .
+      - docker tag $REPOSITORY_URI:$IMAGE_TAG $REPOSITORY_URI:latest
+      - echo "Docker image build completed"
+
   post_build:
     commands:
-      - echo Pushing the Docker image...
+      - echo "Pushing Docker image to ECR..."
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
       - docker push $REPOSITORY_URI:latest
-      - printf '[{"name":"user-service","imageUri":"%s"}]' $REPOSITORY_URI:latest > imagedefinitions.json
+      - echo "Image push completed"
+      - printf '[{"name":"user-service","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
+      - cat imagedefinitions.json
+      - echo "=== Application Build & Deploy Completed Successfully ==="
+
 artifacts:
-  files: imagedefinitions.json
+  files:
+    - imagedefinitions.json
+  name: AppArtifacts
+
+cache:
+  paths:
+    - '/root/.docker/**/*'
