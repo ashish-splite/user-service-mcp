@@ -11,7 +11,7 @@ phases:
   build:
     commands:
       - cd infra
-      - cdk deploy --require-approval never --outputs-file outputs.json
+      - cdk deploy --all --require-approval never --outputs-file outputs.json
 
 artifacts:
   files:
