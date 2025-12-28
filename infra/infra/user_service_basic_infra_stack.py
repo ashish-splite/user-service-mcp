@@ -16,7 +16,7 @@ class UserServiceBasicInfraStack(Stack):
         # VPC
         self.vpc = ec2.Vpc(
             self,
-            "UserServicedVpc",
+            "UserServiceVpc",
             max_azs=2,
             subnet_configuration=[
                 ec2.SubnetConfiguration(
