@@ -23,6 +23,7 @@ ENV/
 .DS_Store
 *.sublime-project
 *.sublime-workspace
+.vscode/
 
 # Git
 .git/
@@ -48,11 +49,6 @@ docker-compose.yml
 .github/
 .gitlab-ci.yml
 buildspec.yml
-
-# Environment files
-.env
-.env.local
-.env.*.local
 
 # Misc
 .DS_Store
