@@ -23,7 +23,7 @@ class UserServiceInfraStack(Stack):
 
         fargate_service = ecs_patterns.ApplicationLoadBalancedFargateService(
             self,
-            "UserService",
+            "UserMCPService",
             cluster=cluster,
             cpu=256,
             memory_limit_mib=512,

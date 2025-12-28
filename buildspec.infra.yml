@@ -13,10 +13,6 @@ phases:
       - cd infra
       - cdk deploy --require-approval never --outputs-file outputs.json
 
-  post_build:
-    commands:
-      - cp infra/outputs.json .
-
 artifacts:
   files:
-    - 'outputs.json'
+    - infra/outputs.json
