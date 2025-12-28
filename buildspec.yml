@@ -32,6 +32,31 @@ phases:
       - echo "Image push completed"
       - printf '[{"name":"user-service","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
       - cat imagedefinitions.json
+      - echo "Forcing ECS service redeployment to pick up latest image..."
+      - |
+        if [ -n "$ECS_CLUSTER_NAME" ] && [ -n "$ECS_SERVICE_NAME" ]; then
+          # Check if the service exists
+          SERVICE_EXISTS=$(aws ecs describe-services \
+            --cluster $ECS_CLUSTER_NAME \
+            --services $ECS_SERVICE_NAME \
+            --region $AWS_DEFAULT_REGION \
+            --query 'services[0].serviceName' \
+            --output text 2>/dev/null)
+          
+          if [ "$SERVICE_EXISTS" != "None" ] && [ -n "$SERVICE_EXISTS" ]; then
+            echo "Service $ECS_SERVICE_NAME found. Initiating force redeployment..."
+            aws ecs update-service \
+              --cluster $ECS_CLUSTER_NAME \
+              --service $ECS_SERVICE_NAME \
+              --force-new-deployment \
+              --region $AWS_DEFAULT_REGION
+            echo "Service redeployment initiated successfully"
+          else
+            echo "Warning: Service $ECS_SERVICE_NAME not found in cluster $ECS_CLUSTER_NAME. Skipping redeployment."
+          fi
+        else
+          echo "Warning: ECS_CLUSTER_NAME or ECS_SERVICE_NAME not set. Skipping redeployment."
+        fi
       - echo "=== Application Build & Deploy Completed Successfully ==="
 
 artifacts:
